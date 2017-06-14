@@ -3,50 +3,80 @@
 
 This short tutorial assumes you have first [downloaded the AWS commandline (CLI) tools](http://docs.aws.amazon.com/cli/latest/userguide/installing.html) and [set it up with your AWS credentials](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html). Once complete you should see a folder called .aws in your home folder, with your credentials in it.
 
-## Create a S3 bucket
+It is also going to assume you register your domain with [Route53](https://console.aws.amazon.com/route53/) (the AWS DNS managment service). This will save a bunch of hassle and only costs a little more.
 
-To create a S3 bucket to store your site you must give it a unique name (if you don't it will return a warning to say that is already in use). I am going to use "seed-site"
+For reference, you could just use the AWS console and follow [this guide](http://docs.aws.amazon.com/AmazonS3/latest/dev/website-hosting-custom-domain-walkthrough.html), but cutting and pasting the following commands is way easier than navigating the AWS console.
 
-    aws s3api create-bucket --bucket seed-site
+I'm going to focus on just the custom domain part here, there is more detail post on creating the site from the commandline [here](https://github.com/brianom/aws-create-s3-website-commandline)
 
-It should return:
+## Create a S3 bucket for the custom domain
 
-    { "Location": "/seed-site" }
+For your new domain "example.com", you must create a bucket with the name the same as the domain name:
 
-If you got to your [AWS console](https://console.aws.amazon.com/s3) you should now see your new bucket.
+    aws s3 mb s3://example.com
 
-![AWS-S3-screenshot](https://github.com/brianom/aws-create-s3-website-commandline/blob/master/images/AWS-S3-screenshot.png)
+To upload a local index.html file AND give everyone in the world permission to read it, enter:
 
-Create your website files and go to that folder. (you can use my index.html and other files available [here](https://github.com/brianom/aws-create-s3-website-commandline)). You can copy the files one at a time like this:
+    aws s3 cp index.html s3://example.com --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers
 
-# Upload files
-You can use cp a lot like the regular commandline copy.
+You can visit your site here, http://example.com.s3.amazonaws.com/index.html
 
-    aws s3 cp index.html s3://seed-site/
+# Configure s3 bucket for hosting
 
-returns
+First it's a good idea to create and upload an error page:
 
-    upload: ./index.html to s3://seed-site/index.html
+    aws s3 cp error.html s3://example.com --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers
 
-Or all the files in your folder and sub folders using a recursive copy. The command line parameters I've used tell it to just copy the jpeg and html files I need. I have also made all the files publically available using "--acl public-read"
+Then set s3 to route traffic to them both:
 
-    aws s3 cp . s3://seed-site/ --recursive --exclude "*" --include "*.jpg" --include "*.html" --acl public-read
+     aws s3 website s3://twittermetrics.com --index-document index.html --error-document error.html
 
-You can verify they have been copied to the remote folder using a remote list.
+# Configure Route53 to direct your domain to s3
 
-    aws s3 ls s3://seed-site/
+If you have registered your domain with AWS it will automatically set up a "hosted zone" with the AWS name servers set up. So all we need to do is set up the Alias record which directs traffic to the domain to the s3 bucket.
 
-Returns:
+We are going to use the aws route53 command change-resource-record-sets, to do this we need the hosted-zone-id of the domain and the region. The regions cannot be retrieved via the API, but are listed [here](http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region), eu-west-ireland is Z1BKCTXD74EZPE.
 
-    2017-06-07 06:38:29     329903 dead-seed.jpg
-    2017-06-07 06:38:29       1608 error.html
-    2017-06-07 06:38:29       1587 index.html
-    2017-06-07 06:38:29     201254 seed.jpg
+To get the hosted-zone-id of the domain use:
 
-# Make it a website
+    aws route53 list-hosted-zones
 
-Finally to configure this S3 bucket to serve the files as a website, run the following command
+you are looking for a code that looks something like: Z2C72EK3L6ZJVX. you can see it here:
 
-     aws s3 website s3://seed-site/ --index-document index.html --error-document error.html
+    "Id": "/hostedzone/Z2C72EK3L6ZJVX"
 
-Ta-Da: https://seed-site.s3.amazonaws.com/index.html
+To set up the alias record, you can now plug these, your region and your domain in to the following command:
+
+    aws route53 change-resource-record-sets --hosted-zone-id Z2LHOQSGWMPWH7 --change-batch '
+    {
+      "Comment": "Create an alias record to map my new domain to an s3 bucket",
+      "Changes": [
+        {
+          "Action": "CREATE",
+          "ResourceRecordSet": {
+            "Name": "example.com.",
+            "Type": "A",
+            "AliasTarget": {
+              "HostedZoneId": "Z1BKCTXD74EZPE",
+              "DNSName": "s3-website-eu-west-1.amazonaws.com.",
+              "EvaluateTargetHealth": false
+            }
+          }
+        }
+      ]
+    }'
+
+The response should look like:
+
+    {
+        "ChangeInfo": {
+            "Status": "PENDING", 
+            "Comment": "Create an alias record to map my new domain to an s3 bucket", 
+            "SubmittedAt": "2017-06-14T21:29:56.153Z", 
+            "Id": "/change/C1NNTHU82J8NBS"
+        }
+    }
+
+It is generally a good idea to repeat these steps for the www.example.com sub domain.
+
+If you need to debug any steps [this](http://docs.aws.amazon.com/AmazonS3/latest/dev/website-hosting-custom-domain-walkthrough.html) guide on how to do the same via the AWS UI might be helpful.
