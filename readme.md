@@ -1,9 +1,9 @@
 
-# How to create a website with a custome domain on AWS S3 from the commandline
+# Host a website with a custom domain on S3 from the commandline
 
-This short tutorial assumes you have first [downloaded the AWS commandline (CLI) tools](http://docs.aws.amazon.com/cli/latest/userguide/installing.html) and [set it up with your AWS credentials](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html). Once complete you should see a folder called .aws in your home folder, with your credentials in it.
+This short guide assumes you have first [downloaded the AWS commandline (CLI) tools](http://docs.aws.amazon.com/cli/latest/userguide/installing.html) and [set it up with your AWS credentials](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html). 
 
-It is also going to assume you register your domain with [Route53](https://console.aws.amazon.com/route53/) (the AWS DNS managment service). This will save a bunch of hassle and only costs a little more.
+It is also going to assume you register your domain with [Route53](https://console.aws.amazon.com/route53/) (the AWS DNS management service). This will save a bunch of hassle and only costs a little more.
 
 For reference, you could just use the AWS console and follow [this guide](http://docs.aws.amazon.com/AmazonS3/latest/dev/website-hosting-custom-domain-walkthrough.html), but cutting and pasting the following commands is way easier than navigating the AWS console.
 
@@ -15,7 +15,7 @@ For your new domain "example.com", you must create a bucket with the name the sa
 
     aws s3 mb s3://example.com
 
-To upload a local index.html file AND give everyone in the world permission to read it, enter:
+To upload a local index.html file and give everyone in the world permission to read it (you can borrow mine [here](https://github.com/brianom/aws-s3-website-custom-domain)):
 
     aws s3 cp index.html s3://example.com --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers
 
@@ -29,7 +29,7 @@ First it's a good idea to create and upload an error page:
 
 Then set s3 to route traffic to them both:
 
-     aws s3 website s3://twittermetrics.com --index-document index.html --error-document error.html
+     aws s3 website s3://example.com --index-document index.html --error-document error.html
 
 # Configure Route53 to direct your domain to s3
 
@@ -78,5 +78,3 @@ The response should look like:
     }
 
 It is generally a good idea to repeat these steps for the www.example.com sub domain.
-
-If you need to debug any steps [this](http://docs.aws.amazon.com/AmazonS3/latest/dev/website-hosting-custom-domain-walkthrough.html) guide on how to do the same via the AWS UI might be helpful.
