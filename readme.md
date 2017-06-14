@@ -1,5 +1,5 @@
 
-# Host a website with a custom domain on S3 from the commandline
+# Set up a website with a custom domain on S3 from the commandline
 
 This short guide assumes you have first [downloaded the AWS commandline (CLI) tools](http://docs.aws.amazon.com/cli/latest/userguide/installing.html) and [set it up with your AWS credentials](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html). 
 
